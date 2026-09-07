@@ -1,4 +1,4 @@
-# Frigate
+# Frigate (BLAKE2b)
 
 ## Documentation
 
@@ -8,15 +8,15 @@
 
 ## What you get on StartOS
 
-An Electrum server that scans the blockchain for Silent Payments on your wallet's behalf, without learning which payments are yours. Point a Silent Payments wallet at Frigate's Electrum address and it can find its incoming payments without downloading the chain itself.
+An Electrum server for the Bitcoin Knots BLAKE2b chain that scans for Silent Payments on your wallet's behalf, without learning which payments are yours. It supports the chain's 164-byte v2 block headers from height 961640 and Electrum protocol 1.6.
 
-Frigate answers Silent Payments queries and nothing else. To use it as your wallet's only server, pair it with **Fulcrum** or **Electrs**, which answer ordinary address lookups; Frigate forwards those to whichever one you select.
+Frigate answers Silent Payments queries and forwards ordinary address lookups to **Fulcrum (BLAKE2b)**. Stock Fulcrum and Electrs are not compatible with this chain.
 
 ## Getting set up
 
-1. **Install Bitcoin** and let it finish syncing. Frigate needs a full, unpruned node, and you'll be asked to run Bitcoin's **Auto-Configure** to turn on the settings Frigate depends on.
-2. **Install Fulcrum** (recommended) or **Electrs**, and start it. You can skip this, but wallets pointed at Frigate will then only be able to do Silent Payments lookups.
-3. **Run Configure Frigate.** Select your Electrum backend, and adjust the indexing settings if you need to. Frigate starts once you save.
+1. **Install Bitcoin Knots (BLAKE2b)** and let it finish syncing. Frigate needs a full, unpruned node, and you'll be asked to run Bitcoin's **Auto-Configure** to turn on the settings Frigate depends on.
+2. **Install Fulcrum (BLAKE2b)** and start it. It may perform its initial sync in parallel with Frigate.
+3. **Run Configure Frigate.** Select Fulcrum and adjust the indexing settings if needed. Frigate starts once you save.
 4. **Wait for the first index.** This takes hours, sometimes days, depending on your start height and hardware. Frigate's Electrum address does not accept connections until it is done — watch **Sync Progress** for the block it has reached.
 5. **Connect your wallet** to Frigate's Electrum address.
 
@@ -44,4 +44,5 @@ If scanning stalls on a GPU, lower **Batch Size** in **Configure Frigate**. Olde
 ## Limitations
 
 - Frigate is experimental, and so is wallet support for Silent Payments. Treat it as something to try rather than something to depend on.
-- Frigate does not answer ordinary address queries on its own. Without Fulcrum or Electrs selected, a general-purpose wallet cannot use it as its only server.
+- Frigate does not answer ordinary address queries on its own. Without BLAKE2b-compatible Fulcrum selected, a general-purpose wallet cannot use it as its only server.
+- Do not connect this build to the conventional SHA256 Bitcoin network or to stock Fulcrum/Electrs.

@@ -6,10 +6,6 @@ import {
   zmqPortTransaction,
 } from 'bitcoin-core-startos/startos/utils'
 import {
-  electrumHostId as electrsHostId,
-  port as electrsPort,
-} from 'electrs-startos/startos/utils'
-import {
   electrumPort as fulcrumPort,
   mainHostId as fulcrumHostId,
 } from 'fulcrum-startos/startos/utils'
@@ -52,15 +48,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
             internalPort: fulcrumPort,
           })
           .const()
-      : selection === 'electrs'
-        ? await sdk.host
-            .getBridgeAddress(effects, {
-              packageId: 'electrs',
-              hostId: electrsHostId,
-              internalPort: electrsPort,
-            })
-            .const()
-        : null
+      : null
 
   await config.merge(
     effects,

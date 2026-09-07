@@ -10,13 +10,13 @@ export const isCacheSize = (
 ): value is (typeof cacheSizes)[number] =>
   (cacheSizes as readonly string[]).includes(value)
 
-export type ElectrumServerType = 'fulcrum' | 'electrs' | 'none'
+export type ElectrumServerType = 'fulcrum' | 'none'
 
 // Backend addresses this package hard-coded before it kept the selection in
 // store.json. Recognised so an install predating the store keeps its choice.
 export const legacyElectrumServerByUrl: Record<string, ElectrumServerType> = {
   'tcp://fulcrum.startos:50001': 'fulcrum',
-  'tcp://electrs.startos:50001': 'electrs',
+  'tcp://electrs.startos:50001': 'none',
 }
 
 // Matches Frigate's native config.toml structure

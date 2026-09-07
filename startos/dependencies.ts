@@ -23,25 +23,19 @@ export const setDependencies = sdk.setupDependencies(async ({ effects }) => {
   return {
     bitcoind: {
       kind: 'running',
-      versionRange:
-        '(>=28.4:17 && <29) || (>=29.4:4 && <30) || (>=30.3:4 && <31) || >=31.1:4',
+      // The Knots package uses a flavored Exver (for example
+      // #knots:29.4:8), which is incomparable with an unflavored range.
+      versionRange: '*',
       healthChecks: ['bitcoind', 'sync-progress'],
     },
-    ...(selection === 'electrs'
-      ? {
-          electrs: {
-            kind: 'running',
-            versionRange: '>=0.11.1:11',
-            healthChecks: ['electrs', 'sync'],
-          },
-        }
-      : {}),
     ...(selection === 'fulcrum'
       ? {
           fulcrum: {
             kind: 'running',
-            versionRange: '>=2.1.1:8',
-            healthChecks: ['primary', 'sync-progress'],
+            // Accept BLAKE2b-flavored Fulcrum builds. Requiring only the
+            // primary check lets Frigate and Fulcrum initial-sync together.
+            versionRange: '*',
+            healthChecks: ['primary'],
           },
         }
       : {}),
