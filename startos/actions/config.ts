@@ -17,12 +17,6 @@ const inputSpec = InputSpec.of({
     let serverType: ElectrumServerType = 'none'
     const disabled: ElectrumServerType[] = []
 
-    if (installedPackages.includes('electrs')) {
-      serverType = 'electrs'
-    } else {
-      disabled.push('electrs')
-    }
-
     if (installedPackages.includes('fulcrum')) {
       serverType = 'fulcrum'
     } else {
@@ -39,12 +33,6 @@ const inputSpec = InputSpec.of({
           name:
             i18n('Fulcrum (recommended)') +
             (disabled.includes('fulcrum') ? ' ' + i18n('(not installed)') : ''),
-          spec: InputSpec.of({}),
-        },
-        electrs: {
-          name:
-            i18n('Electrs') +
-            (disabled.includes('electrs') ? ' ' + i18n('(not installed)') : ''),
           spec: InputSpec.of({}),
         },
         none: {

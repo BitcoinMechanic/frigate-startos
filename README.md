@@ -2,14 +2,14 @@
   <img src="icon.png" alt="Frigate Logo" width="21%">
 </p>
 
-# Frigate Electrum Server on StartOS
+# Frigate (BLAKE2b) on StartOS
 
 > Everything not listed in this document should behave the same as upstream
 > Frigate. If a feature, setting, or behavior is not mentioned here, the
 > upstream documentation is accurate and fully applicable — see the
 > Documentation section of `instructions.md` for links.
 
-[Frigate](https://github.com/sparrowwallet/frigate) is an experimental Electrum server from the Sparrow Wallet team. It scans the chain for Silent Payments (BIP352) on a wallet's behalf using ephemeral client keys, keeps the resulting tweak index in DuckDB, and can offload the scan to a GPU. It is not the Frigate NVR project.
+[Frigate](https://github.com/sparrowwallet/frigate) is an experimental Electrum server from the Sparrow Wallet team. This fork adds the 164-byte v2 headers, BLAKE2b proof-of-work/block identifiers and activation rules used by the Bitcoin Knots BLAKE2b chain. It is intended to run with the matching Knots and Fulcrum builds, including the flavored packages from `start9.mempool.guide`.
 
 - **Upstream repo:** <https://github.com/sparrowwallet/frigate>
 - **Wrapper repo:** <https://github.com/Start9-Community/frigate-startos>
@@ -35,13 +35,13 @@
 
 ## Image and Container Runtime
 
-Upstream publishes no container image, so this package wraps a third-party one that installs the upstream `.deb` after verifying its PGP signature and sha256 manifest.
+The image builds Frigate 1.5.3 from a pinned upstream commit, replaces its Drongo submodule with a pinned `privkeyio/drongo` revision, and applies `patches/frigate-knots.patch`. It then copies that build over the stock application in the community runtime image, preserving its GPU libraries and entrypoint.
 
 | Property      | Value                                                                |
 | ------------- | -------------------------------------------------------------------- |
 | Image         | `ghcr.io/remcoros/frigate-docker`                                    |
 | Architectures | x86_64 and aarch64 for `generic`; x86_64 only for `nvidia` and `amd` |
-| Entrypoint    | The image's own, unmodified — it execs `frigate -n "$NETWORK"`       |
+| Entrypoint    | Community runtime entrypoint — it execs `frigate -n "$NETWORK"`      |
 
 | Subcontainer | Purpose                                       |
 | ------------ | --------------------------------------------- |
@@ -103,10 +103,9 @@ Bitcoin is required; an Electrum backend is optional but strongly recommended.
 | Dependency | Required | Gated on health checks      | Why                                                                                                                                                                                                                       |
 | ---------- | -------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `bitcoind` | Yes      | `bitcoind`, `sync-progress` | Supplies blocks over RPC and new-block events over ZMQ. Its data directory is mounted read-only at `/root/.bitcoin` for cookie authentication. Frigate needs an archival node with `txindex` and ZMQ enabled — see Tasks. |
-| `fulcrum`  | No       | `primary`, `sync-progress`  | Answers ordinary address lookups, which Frigate does not implement. Required only while it is the selected backend.                                                                                                       |
-| `electrs`  | No       | `electrs`, `sync`           | The same role as Fulcrum. Required only while it is the selected backend.                                                                                                                                                 |
+| `fulcrum`  | No       | `primary`                   | The BLAKE2b-compatible build answers ordinary address lookups. It may initial-sync in parallel with Frigate.                                                                                                               |
 
-Only one backend is used at a time, and only the selected one becomes a dependency — selecting Fulcrum does not oblige a user who also has Electrs installed to keep it running. The backend's address is resolved from the running service on each start rather than hard-coded, so a reinstall or a reassigned port heals on the next restart.
+Fulcrum (BLAKE2b) is the only supported backend. Its address is resolved from the running service on each start rather than hard-coded, so a reinstall or reassigned port heals on the next restart.
 
 Selecting `None` is allowed and leaves Frigate answering Silent Payments queries alone, with nothing behind it to proxy to — a wallet connected to it will fail every ordinary address lookup. That is the shape of the complaint when a user reports the server "works but can't find my transactions".
 
@@ -135,7 +134,7 @@ The initial index is long — hours to days depending on the start height, the c
 
 One action, and the service is unusable until it has been run once.
 
-**Configure Frigate** picks the Electrum backend and the indexing settings. Run it at install (a task requires it), and again to change backends, to re-index from a different height, or to move the scan between CPU and GPU.
+**Configure Frigate** selects Fulcrum or standalone mode and controls the indexing settings. Run it at install (a task requires it), and again to re-index from a different height or move the scan between CPU and GPU.
 
 - **What it changes:** `store.json`'s backend selection, and the `index` and `scan` sections of `config.toml`.
 - **Cost:** the write is instant, but saving restarts Frigate. Lowering **Index Start Height** discards nothing, but Frigate will re-index the gap, which can take hours.
@@ -177,7 +176,7 @@ Most of these come from the package taking ownership of the Bitcoin connection a
 
 1. **No SSL configuration.** Upstream's `server.sslCert` / `server.sslKey` are not exposed; StartOS terminates TLS on its own certificate instead.
 2. **The Bitcoin connection is not yours to set.** `core.server`, `core.dataDir`, `core.authType` and `core.zmqSequenceEndpoint` are rewritten on every start to point at the Bitcoin service on this server. Cookie authentication is the only mode; `USERPASS` is not exposed.
-3. **One backend at a time.** Upstream takes a single `backendElectrumServer`, so Fulcrum and Electrs are alternatives, not both.
+3. **BLAKE2b Fulcrum only.** Stock Fulcrum and Electrs do not understand the post-fork header format.
 4. **A different default start height.** This package indexes from a more recent block than upstream does, to keep the first sync tolerable. The trade-off and how to change it are covered in the Instructions tab.
 5. **The AMD variant is built on ROCm nightlies.** The image pins a nightly ROCm release; it has not been tested by the packager on real AMD hardware.
 6. **Upstream is experimental.** Silent Payments support is still moving, and so is the wallet support for it.
@@ -188,7 +187,7 @@ Most of these come from the package taking ownership of the Bitcoin connection a
 
 ```yaml
 package_id: frigate
-image: ghcr.io/remcoros/frigate-docker
+image: locally built Knots-aware Frigate over ghcr.io/remcoros/frigate-docker
 architectures:
   - x86_64
   - aarch64 # generic variant only; nvidia and amd are x86_64
@@ -203,8 +202,7 @@ startos_managed_env_vars:
   - NETWORK
 dependencies:
   - bitcoind # required; its volume is mounted read-only at /root/.bitcoin
-  - fulcrum # optional, recommended
-  - electrs # optional
+  - fulcrum # optional; BLAKE2b-compatible build only
 interfaces:
   electrum: { type: api, port: 50001 }
 actions:

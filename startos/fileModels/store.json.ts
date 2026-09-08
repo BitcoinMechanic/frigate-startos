@@ -8,7 +8,7 @@ import {
 
 const shape = z.object({
   electrumServer: z
-    .union([z.literal('fulcrum'), z.literal('electrs'), z.literal('none')])
+    .union([z.literal('fulcrum'), z.literal('none')])
     .catch('none'),
 })
 
