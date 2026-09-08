@@ -34,10 +34,12 @@ COPY patches/frigate-knots.patch /tmp/frigate-knots.patch
 WORKDIR /src/frigate
 
 RUN patch --strip=1 < /tmp/frigate-knots.patch \
-    && ./gradlew --no-daemon clean test installDist
+    && grep --quiet --fixed-strings "'--strip-native-commands'" build.gradle \
+    && sed --in-place "s/'--strip-native-commands', //" build.gradle \
+    && ./gradlew --no-daemon clean test jlink
 
 FROM ${BASE_IMAGE}
 
 # Preserve the community image's entrypoint and GPU runtime, replacing only
 # the stock upstream Frigate application with the Knots-aware build.
-COPY --from=builder /src/frigate/build/install/frigate /opt/frigate
+COPY --from=builder /src/frigate/build/image /opt/frigate

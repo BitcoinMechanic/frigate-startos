@@ -3,7 +3,7 @@ import { IMPOSSIBLE, VersionInfo } from '@start9labs/start-sdk'
 export const FRIGATE_VERSION = '1.5.3.3'
 
 export const current = VersionInfo.of({
-  version: '1.5.3:9',
+  version: '1.5.3:10',
   releaseNotes: {
     en_US:
       'Adds support for the Bitcoin Knots BLAKE2b chain, including 164-byte v2 headers, BLAKE2b proof-of-work and block identifiers, and Electrum 1.6 header forwarding. Accepts flavored Knots and Fulcrum packages.',
