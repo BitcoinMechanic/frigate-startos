@@ -97,7 +97,7 @@ One model, `config.toml`, and the package owns roughly half of it. The other hal
 | `server.backendElectrumServer` | the selected backend's address, or empty when none is selected      |
 | `limits.excludedSubnets`       | upstream loopback defaults plus StartOS's current TLS-proxy address |
 
-`index.startHeight`, `index.cacheSize`, `scan.computeBackend`, and `scan.batchSize` are seeded once and thereafter belong to the **Configure Frigate** action. Those four are watched rather than rewritten: a hand edit survives, and changing any of them — by hand or through the action — restarts Frigate so the new value takes effect, since Frigate never re-reads its config while running.
+`index.startHeight`, `index.cacheSize`, `scan.computeBackend`, and `scan.batchSize` are seeded once and thereafter belong to the **Configure Frigate** action. Those four are watched rather than rewritten, so hand edits survive. Configure is available only while stopped; start the service after saving. A running service restarts when a watched value changes outside the action, but changing `startHeight` alone never backfills an existing index: Frigate resumes from its persisted database checkpoint. Use the explicit rebuild option to apply a new start height to an existing index.
 
 Any key the package does not name is left alone entirely, including the upstream keys this package exposes no control for. The `limits.excludedSubnets` exception is necessary because StartOS terminates TLS and opens the upstream connection from its `lxcbr0` bridge address, which the package reads with `sdk.getOsIp()` whenever Frigate starts. Without it, Frigate 1.6 would treat every StartOS client as one IP for its new per-IP limits and request pacing.
 
@@ -133,7 +133,7 @@ Frigate cannot start until Bitcoin is configured for it and the user has confirm
 1. A `config.toml` is written with this package's defaults.
 2. A critical **Configure Frigate** task is raised. Nothing starts until it is answered.
 3. A critical **Auto-Configure** task is raised on Bitcoin, to turn on `txindex` and ZMQ and turn off pruning.
-4. Once both are satisfied and Bitcoin is synced, Frigate starts and begins indexing from the configured start height.
+4. Once both are satisfied and Bitcoin is synced, start Frigate. A fresh installation indexes from the configured start height (default **709632**, Taproot activation).
 
 The initial index is long — hours to days depending on the start height, the compute backend, and the hardware. The Electrum port stays closed until it finishes.
 
@@ -143,10 +143,13 @@ One action, and the service is unusable until it has been run once.
 
 **Configure Frigate** picks the Electrum backend and the indexing settings. Run it at install (a task requires it), and again to change backends, to re-index from a different height, or to move the scan between CPU and GPU.
 
-- **What it changes:** `store.json`'s backend selection, and the `index` and `scan` sections of `config.toml`.
-- **Cost:** the write is instant, but saving restarts Frigate. Lowering **Index Start Height** discards nothing, but Frigate will re-index the gap, which can take hours.
-- **Repeat safety:** idempotent. Saving unchanged values rewrites the same file and does not restart the service.
-- **What happens next:** Frigate restarts and picks up the new settings. Watch the **Sync Progress** health check for the current block.
+- **Availability:** only while stopped. Stop Frigate and wait for shutdown before opening Configure.
+- **What it changes:** the backend selection and the `index` and `scan` settings. **Rebuild Index** defaults to off on every form opening and is never stored as a recurring command.
+- **Existing index:** changing **Index Start Height** requires **Rebuild Index** if `main/db` exists. Without it the action fails before writing settings, so it cannot silently save a height that the existing database ignores.
+- **Explicit rebuild:** deletes only `main/db`, including its DuckDB WAL, after settings have been saved. The next start builds a fresh index from the selected height; it does not just fill the missing gap. Configuration and the backend choice remain intact. Rebuilding can take hours or days, during which wallets cannot use Frigate.
+- **Earlier broken saves:** if version `1.6.1:2` already saved a lower height, stop the service, leave that height selected, enable **Rebuild Index**, save, then start. The explicit option works even when the saved height is unchanged.
+- **Repeat safety:** normal saves preserve the database; every explicitly requested rebuild deletes it again. Custom `[database].url` configurations cannot be rebuilt by this action and must be managed separately.
+- **What happens next:** start Frigate and watch its startup log for the `Indexing ... (start to end)` range and **Sync Progress** for the current height. Upgrading this package never deletes an existing index or overwrites an existing start height.
 
 ## Tasks
 
@@ -184,7 +187,7 @@ Most of these come from the package taking ownership of the Bitcoin connection a
 1. **No SSL configuration.** Upstream's `server.sslCert` / `server.sslKey` are not exposed; StartOS terminates TLS on its own certificate instead.
 2. **The Bitcoin connection is not yours to set.** `core.server`, `core.dataDir`, `core.authType` and `core.zmqSequenceEndpoint` are rewritten on every start to point at the Bitcoin service on this server. Cookie authentication is the only mode; `USERPASS` is not exposed.
 3. **BLAKE2b backend only.** This build offers BLAKE2b-compatible Fulcrum or no backend; stock Electrs is not supported.
-4. **A different default start height.** This package indexes from a more recent block than upstream does, to keep the first sync tolerable. The trade-off and how to change it are covered in the Instructions tab.
+4. **Full-history default.** New installations begin at Taproot activation, **709632**, matching upstream. Existing installations keep their configured height; lowering it requires an explicit index rebuild.
 5. **The AMD variant is built on ROCm nightlies.** The image pins a nightly ROCm release; it has not been tested by the packager on real AMD hardware.
 6. **Upstream is experimental.** Silent Payments support is still moving, and so is the wallet support for it.
 7. **StartOS manages the Frigate 1.6 proxy exception.** The platform terminates TLS before it reaches Frigate, so the package reads the current bridge address with `sdk.getOsIp()` and includes it in `limits.excludedSubnets`. Do not remove it: otherwise every client through StartOS is treated as the same IP and can hit Frigate's per-IP limits.
@@ -260,7 +263,7 @@ The following procedure targets **StartOS 0.4.1.2**, on the **same box**, with S
    ```
 
    Copy the **whole** `main` volume, including `db/`, any DuckDB WAL, `config.toml`, and `store.json` when present. Do not copy only the `.duckdb` file, rename the package directory, edit StartOS's database, or copy the old package's assets. The guarded `--delete` above removes generated destination files absent from the old volume, notably a default `store.json` that would otherwise hide the old backend choice. It never deletes source files.
-5. Rebuild the **new service's container** to rerun initialization against the copied settings. From an authenticated CLI on the build VM, use `start-cli -H <box-url> package rebuild frigate-blake2b`. Wait for initialization to finish, then open **Configure Frigate**, check the backend and indexing settings against your notes, and save. Initialization infers a missing `store.json` from the old backend URL; runtime setup regenerates Bitcoin RPC/ZMQ and backend addresses and the StartOS TLS-proxy exemption. Do not copy OS data-version metadata: this is a new service, so old-ID version migrations are not automatically executed.
+5. Rebuild the **new service's container** to rerun initialization against the copied settings. From an authenticated CLI on the build VM, use `start-cli -H <box-url> package rebuild frigate-blake2b`. Wait for initialization to finish, then open **Configure Frigate**, check the backend and indexing settings against your notes, leave **Rebuild Index** off to retain the copied index, and save. Initialization infers a missing `store.json` from the old backend URL; runtime setup regenerates Bitcoin RPC/ZMQ and backend addresses and the StartOS TLS-proxy exemption. Do not copy OS data-version metadata: this is a new service, so old-ID version migrations are not automatically executed.
 6. Start the new service. Check its logs for database errors and verify it resumes from the saved index height, catches up, and passes both health checks. Only after that, point wallets at its **new** Electrum address and confirm a known wallet's history. For BLAKE2b header validation, run `python3 scripts/header-smoke-test.py HOST PORT --ssl` from this repository against the new TLS address. Leave the old service stopped.
 
 **Rollback:** stop the new service, wait for **Stopped**, start the original `frigate`, and restore wallets' original addresses. Its volume was never moved or upgraded. Do not copy the new database back over the old one. Uninstall the old service only after you are satisfied with the new one; uninstalling deletes its rollback data. If the new service reports database incompatibility, preserve both copies for diagnosis and rebuild only the new index as a fallback.

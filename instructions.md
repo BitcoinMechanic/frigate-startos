@@ -22,20 +22,27 @@ Frigate 1.6 adds limits that protect a public Electrum server from too many conn
 
 1. **Install Bitcoin Knots (BLAKE2b)** and let it finish syncing. Frigate needs a full, unpruned node, and you'll be asked to run Bitcoin's **Auto-Configure** to turn on the settings Frigate depends on.
 2. **Install Fulcrum (BLAKE2b)** (recommended), and start it. You can skip this, but wallets pointed at Frigate will then only be able to do Silent Payments lookups.
-3. **Run Configure Frigate.** Select your Electrum backend, and adjust the indexing settings if you need to. Frigate starts once you save.
+3. **Run Configure Frigate.** Select your Electrum backend, and adjust the indexing settings if you need to. Save, then start Frigate.
 4. **Wait for the first index.** This takes hours, sometimes days, depending on your start height and hardware. Frigate's Electrum address does not accept connections until it is done — watch **Sync Progress** for the block it has reached.
 5. **Connect your wallet** to Frigate's Electrum address.
 
 ## Choosing a start height
 
-Frigate only finds Silent Payments made at or after the block it starts indexing from. The default here is **840000**, which covers every practical Silent Payments wallet and keeps the first index to a reasonable length.
+Frigate only finds Silent Payments made at or after the block it starts indexing from. New installations default to **709632**, Taproot activation, to cover the full possible Silent Payments history. Existing installations retain their selected height on upgrade.
 
-Change it in **Configure Frigate** if you need to:
+Stop the service before changing it in **Configure Frigate**:
 
 - **Faster first sync** — if you know your wallet received nothing before a particular block, start there instead.
-- **Full history** — set it to **709632**, the block Taproot activated, to index every Silent Payment there has ever been. This adds a great deal of time to the first index and almost nobody needs it.
+- **Full history** — set it to **709632**, the block Taproot activated, to index every Silent Payment there has ever been. This is the default for complete history.
 
-Lowering the start height later re-indexes the gap; raising it does not delete anything already indexed.
+**An existing index resumes from its saved checkpoint even if you change the configured height.** To apply a different starting height:
+
+1. Stop Frigate and wait until it shows **Stopped**.
+2. Open **Configure Frigate → Advanced settings**.
+3. Set **Index Start Height** to **709632** for full history and enable **Rebuild Index**.
+4. Save, then start Frigate. Its log should report indexing from the chosen height.
+
+Rebuild Index deletes the current index, including its progress, and builds it again. Configuration is preserved. Wallet connections remain unavailable until the new index catches up. This works even if you already saved the new height with an earlier package version. Leave Rebuild Index off for ordinary configuration changes; changing the height with an existing index and without enabling it is rejected.
 
 ## Using a GPU
 

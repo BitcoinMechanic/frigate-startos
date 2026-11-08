@@ -1,3 +1,4 @@
+import { lstat, rm } from 'node:fs/promises'
 import { sdk } from '../sdk'
 import { i18n } from '../i18n'
 import {
@@ -61,6 +62,13 @@ const inputSpec = InputSpec.of({
         max: null,
         default: indexStartHeightDefault,
       }),
+      rebuildIndex: Value.toggle({
+        name: i18n('Rebuild Index'),
+        description: i18n(
+          'Delete the existing index and rebuild from Index Start Height on the next start. Required when changing the start height of an existing index. Also use this if an earlier version saved a new height without rebuilding.',
+        ),
+        default: false,
+      }),
       scriptPubKeyCacheSize: Value.select({
         name: i18n('Script PubKey Cache Size'),
         description: i18n(
@@ -108,8 +116,10 @@ export const setConfig = sdk.Action.withInput(
   async ({ effects }) => ({
     name: i18n('Configure Frigate'),
     description: i18n('Set or update Frigate configuration settings.'),
-    warning: null,
-    allowedStatuses: 'any',
+    warning: i18n(
+      'If Rebuild Index is enabled, the current index is deleted. Frigate will be unavailable until indexing finishes again. Configuration is preserved. Start the service after saving.',
+    ),
+    allowedStatuses: 'only-stopped',
     group: i18n('Configuration'),
     visibility: 'enabled',
   }),
@@ -129,6 +139,7 @@ export const setConfig = sdk.Action.withInput(
       },
       advanced: {
         indexStartHeight: currentConfig.index.startHeight,
+        rebuildIndex: false,
         scriptPubKeyCacheSize: isCacheSize(currentConfig.index.cacheSize)
           ? currentConfig.index.cacheSize
           : '10M',
@@ -139,6 +150,32 @@ export const setConfig = sdk.Action.withInput(
   },
 
   async ({ effects, input }) => {
+    const currentConfig = (await config.read().once())!
+    const database = currentConfig.database as { url?: unknown } | undefined
+    const heightChanged =
+      currentConfig.index.startHeight !== input.advanced.indexStartHeight
+    if ((heightChanged || input.advanced.rebuildIndex) && database?.url) {
+      throw new Error(
+        i18n(
+          'This action cannot rebuild a custom database URL. Manage that database separately before changing its start height.',
+        ),
+      )
+    }
+    const indexPath = sdk.volumes.main.subpath('/db')
+    const hasIndex = await lstat(indexPath).then(
+      () => true,
+      (error: NodeJS.ErrnoException) => {
+        if (error.code === 'ENOENT') return false
+        throw error
+      },
+    )
+    if (heightChanged && hasIndex && !input.advanced.rebuildIndex) {
+      throw new Error(
+        i18n(
+          'An index already exists. Enable Rebuild Index to apply a different start height. No settings have been changed.',
+        ),
+      )
+    }
     await store.merge(effects, {
       electrumServer: input.electrumServer.selection,
     })
@@ -152,5 +189,18 @@ export const setConfig = sdk.Action.withInput(
         batchSize: input.advanced.batchSize,
       },
     })
+    // only-stopped keeps DuckDB closed. Remove the complete index directory,
+    // including any WAL, only after settings were saved successfully.
+    if (input.advanced.rebuildIndex) {
+      await rm(indexPath, { recursive: true, force: true })
+    }
+    return {
+      version: '1',
+      title: i18n('Configure Frigate'),
+      message: i18n(
+        'Settings saved. Start Frigate to apply them. If Rebuild Index was enabled, indexing starts again from the configured height.',
+      ),
+      result: null,
+    }
   },
 )

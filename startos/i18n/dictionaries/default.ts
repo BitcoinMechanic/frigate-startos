@@ -35,6 +35,12 @@ const dict = {
   'Batch Size': 221,
   'Transactions processed per GPU dispatch. If scanning hangs or becomes unstable on an older GPU, try 10,000 to 50,000.': 222,
   '10M (default)': 223,
+  'Rebuild Index': 224,
+  'Delete the existing index and rebuild from Index Start Height on the next start. Required when changing the start height of an existing index. Also use this if an earlier version saved a new height without rebuilding.': 225,
+  'If Rebuild Index is enabled, the current index is deleted. Frigate will be unavailable until indexing finishes again. Configuration is preserved. Start the service after saving.': 226,
+  'This action cannot rebuild a custom database URL. Manage that database separately before changing its start height.': 227,
+  'An index already exists. Enable Rebuild Index to apply a different start height. No settings have been changed.': 228,
+  'Settings saved. Start Frigate to apply them. If Rebuild Index was enabled, indexing starts again from the configured height.': 229,
 
   // dependencies.ts and init/index.ts
   'Frigate requires txindex, pruning disabled, and ZMQ enabled in Bitcoin.': 300,

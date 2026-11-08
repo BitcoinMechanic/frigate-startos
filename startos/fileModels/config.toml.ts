@@ -1,8 +1,8 @@
 import { z, FileHelper, T } from '@start9labs/start-sdk'
 import { sdk } from '../sdk'
 
-// Upstream's default is 709632, Taproot activation on mainnet.
-export const indexStartHeightDefault = 840000
+// Index the full possible Silent Payments history, starting at Taproot activation.
+export const indexStartHeightDefault = 709632
 
 // StartOS terminates the public TLS listener and connects to Frigate through
 // its lxcbr0 gateway. Frigate 1.6's per-IP limits would otherwise treat every

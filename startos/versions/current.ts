@@ -3,10 +3,10 @@ import { IMPOSSIBLE, VersionInfo } from '@start9labs/start-sdk'
 export const FRIGATE_VERSION = '1.6.1'
 
 export const current = VersionInfo.of({
-  version: '1.6.1:2',
+  version: '1.6.1:3',
   releaseNotes: {
     en_US:
-      'Updates the BLAKE2b build to Frigate 1.6.1 with server limits and shutdown fixes. Uses the separate service ID frigate-blake2b. Existing frigate installations, including 1.5.3:1, require the stopped-service volume-copy procedure in the package README to retain their index and settings. Keep the old installation for rollback and reconnect wallets to the new address.',
+      'Fixes changing Index Start Height with an existing database: stop Frigate, open Configure Frigate, set the height and enable Rebuild Index, save, then start it. Existing databases resume from their checkpoint unless explicitly rebuilt. New installations default to Taproot activation (709632). Existing settings and indexes are preserved on upgrade; if you already changed the height in an earlier version, enable Rebuild Index once to apply it.',
   },
   migrations: {
     up: async () => {},
