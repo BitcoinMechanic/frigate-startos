@@ -7,6 +7,8 @@ on:
 
 jobs:
   release:
+    # Forks can build and sideload without registry credentials.
+    if: vars.ENABLE_REGISTRY_RELEASES == 'true'
     uses: Start9Labs/start-technologies/.github/workflows/release.yml@master
     with:
       RELEASE_REGISTRY: ${{ vars.RELEASE_REGISTRY }}

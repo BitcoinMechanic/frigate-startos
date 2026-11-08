@@ -269,3 +269,21 @@ The following procedure targets **StartOS 0.4.1.2**, on the **same box**, with S
 **Rollback:** stop the new service, wait for **Stopped**, start the original `frigate`, and restore wallets' original addresses. Its volume was never moved or upgraded. Do not copy the new database back over the old one. Uninstall the old service only after you are satisfied with the new one; uninstalling deletes its rollback data. If the new service reports database incompatibility, preserve both copies for diagnosis and rebuild only the new index as a fallback.
 
 These steps do not claim an end-to-end migration test on your box: the actual copied database and wallet behavior must be checked in steps 5–6.
+
+
+## GitHub CI and optional publishing
+
+Pushes to `main`, pull requests targeting `main`, and manual **Build** runs
+build the Makefile's four variant/architecture targets and upload `.s9pk`
+artifacts. These builds use temporary signing keys and do not publish to a
+registry. For the stable local signing identity, use the package built in your
+local packaging workspace.
+
+The inherited **Tag and Release** and tag-triggered **Release** workflows are
+opt-in because this fork does not inherit Start9's registry credentials. Leave
+`ENABLE_REGISTRY_RELEASES` unset for build-only CI. To enable registry releases,
+configure repository variables `REFERENCE_REGISTRY`, `RELEASE_REGISTRY`, and
+`S3_S9PKS_BASE_URL`, and secrets `DEV_KEY`, `S3_ACCESS_KEY`, and `S3_SECRET_KEY`
+for your publishing setup, then set `ENABLE_REGISTRY_RELEASES` to `true`.
+Enabling it permits automatic tagging and publishing from `main`; it is not
+needed for local sideloading or CI build artifacts.

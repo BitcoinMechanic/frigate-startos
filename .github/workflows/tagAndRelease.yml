@@ -11,6 +11,8 @@ concurrency:
 
 jobs:
   tag:
+    # Forks can build and sideload without registry credentials.
+    if: vars.ENABLE_REGISTRY_RELEASES == 'true'
     uses: Start9Labs/start-technologies/.github/workflows/tagAndRelease.yml@master
     with:
       REFERENCE_REGISTRY: ${{ vars.REFERENCE_REGISTRY }}
