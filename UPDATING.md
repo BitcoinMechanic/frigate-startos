@@ -1,6 +1,6 @@
 # Updating the upstream version
 
-This package wraps [sparrowwallet/frigate](https://github.com/sparrowwallet/frigate), which publishes no container image of its own. The image comes from [remcoros/frigate-docker](https://github.com/remcoros/frigate-docker), a third-party build that downloads the upstream `.deb` and verifies it against Craig Raw's PGP signature and the release's sha256 manifest.
+This package builds [sparrowwallet/frigate](https://github.com/sparrowwallet/frigate) with the BLAKE2b integration patch and [privkeyio/drongo](https://github.com/privkeyio/drongo), then overlays the result on the GPU-capable [remcoros/frigate-docker](https://github.com/remcoros/frigate-docker) runtime. Both the application source pins and the base-image pins must be updated.
 
 So an upstream release is only installable here once that image has been rebuilt and pushed. Check both.
 
@@ -62,6 +62,20 @@ In `startos/versions/current.ts`:
 - Set `FRIGATE_VERSION` to the image tag, without a leading `v`.
 - Set `version` to the **upstream** Frigate release plus a packaging revision — `1.5.3:0` for a new upstream release, or `1.5.3:N+1` when only the image or this package changed.
 
-In `startos/manifest/index.ts`, replace the `sha256:` digest in **both** `defaultSource` and `rocmSource` with the ones resolved above.
+In `startos/manifest/index.ts`, replace the `sha256:` digest in **both** `defaultBaseImage` and `rocmBaseImage` with the ones resolved above.
 
 Then check the upstream release notes for new or renamed `config.toml` keys and reconcile `startos/fileModels/config.toml.ts` against them. Frigate does not reload its config at runtime, so a key this package writes but Frigate no longer reads fails silently.
+
+
+In `Dockerfile`, update `FRIGATE_COMMIT` to that release's exact commit and
+`FRIGATE_SHA256` to the SHA256 of its GitHub source archive. Update
+`DRONGO_COMMIT` and `DRONGO_SHA256` together after checking the BLAKE2b fork's
+compatibility. Rebase `patches/frigate-knots.patch` onto the new Frigate source
+and require it to apply without fuzz. Keep the Java launcher in the jlink
+image: the community entrypoint invokes it directly.
+
+Build the image and run the Frigate and Drongo tests (the Dockerfile does both),
+then build the package locally. Check the old-volume migration using a copy,
+not the only database. After sideloading on a test box, run
+`scripts/header-smoke-test.py HOST PORT --ssl` against BLAKE2b-compatible
+Bitcoin and Fulcrum before publishing.

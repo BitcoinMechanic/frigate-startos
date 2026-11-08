@@ -2,7 +2,7 @@
   <img src="icon.png" alt="Frigate Logo" width="21%">
 </p>
 
-# Frigate Electrum Server on StartOS
+# Frigate (BLAKE2b) on StartOS
 
 > Everything not listed in this document should behave the same as upstream
 > Frigate. If a feature, setting, or behavior is not mentioned here, the
@@ -12,7 +12,10 @@
 [Frigate](https://github.com/sparrowwallet/frigate) is an experimental Electrum server from the Sparrow Wallet team. It scans the chain for Silent Payments (BIP352) on a wallet's behalf using ephemeral client keys, keeps the resulting tweak index in DuckDB, and can offload the scan to a GPU. It is not the Frigate NVR project.
 
 - **Upstream repo:** <https://github.com/sparrowwallet/frigate>
-- **Wrapper repo:** <https://github.com/Start9-Community/frigate-startos>
+- **Wrapper repo:** <https://github.com/BitcoinMechanic/frigate-startos>
+- **Parent wrapper repo:** <https://github.com/Start9-Community/frigate-startos>
+- **StartOS service ID:** `frigate-blake2b`
+- **StartOS display name:** Frigate (BLAKE2b)
 
 ---
 
@@ -30,12 +33,15 @@
 - [Backups and Restore](#backups-and-restore)
 - [Limitations and Differences](#limitations-and-differences)
 - [Quick Reference for AI Consumers](#quick-reference-for-ai-consumers)
+- [Migrate from the old service ID](#migrate-from-service-id-frigate-including-1531)
 
 ---
 
 ## Image and Container Runtime
 
-Upstream publishes no container image, so this package wraps a third-party one that installs the upstream `.deb` after verifying its PGP signature and sha256 manifest.
+This package builds Frigate 1.6.1 from a SHA256-verified source archive, applies `patches/frigate-knots.patch`, and uses the pinned BLAKE2b-aware `privkeyio/drongo` library. The Dockerfile runs both projects' tests and creates a Java runtime image, then overlays it on the digest-pinned community image to retain its entrypoint and GPU libraries. Source commits and archive digests are recorded in `Dockerfile`.
+
+The patch reads raw headers from Bitcoin RPC and validates their identifiers, preserving both legacy 80-byte and BLAKE2b 164-byte headers. This is a BLAKE2b application build, not just a renamed stock package. Build locally with `make generic-x86` (or `make nvidia-x86` / `make amd-x86`); the result is `frigate-blake2b_<variant>_x86_64.s9pk`.
 
 | Property      | Value                                                                |
 | ------------- | -------------------------------------------------------------------- |
@@ -99,15 +105,14 @@ Any key the package does not name is left alone entirely, including the upstream
 
 ## Dependencies
 
-Bitcoin is required; an Electrum backend is optional but strongly recommended.
+BLAKE2b-compatible Bitcoin is required; BLAKE2b-compatible Fulcrum is optional but strongly recommended. Stock Bitcoin and Electrs are not suitable backends for this chain. Dependencies retain IDs `bitcoind` and `fulcrum`. Wildcard version ranges accept the flavored BLAKE2b packages, as in the original BLAKE2b branch; those ranges do not verify which chain the installed services follow. Fulcrum is gated only on its `primary` health check so both services can synchronize together.
 
 | Dependency | Required | Gated on health checks      | Why                                                                                                                                                                                                                       |
 | ---------- | -------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `bitcoind` | Yes      | `bitcoind`, `sync-progress` | Supplies blocks over RPC and new-block events over ZMQ. Its data directory is mounted read-only at `/root/.bitcoin` for cookie authentication. Frigate needs an archival node with `txindex` and ZMQ enabled — see Tasks. |
-| `fulcrum`  | No       | `primary`, `sync-progress`  | Answers ordinary address lookups, which Frigate does not implement. Required only while it is the selected backend.                                                                                                       |
-| `electrs`  | No       | `electrs`, `sync`           | The same role as Fulcrum. Required only while it is the selected backend.                                                                                                                                                 |
+| `fulcrum`  | No       | `primary`                   | Answers ordinary address lookups, which Frigate does not implement. Required only while it is the selected backend.                                                                                                       |
 
-Only one backend is used at a time, and only the selected one becomes a dependency — selecting Fulcrum does not oblige a user who also has Electrs installed to keep it running. The backend's address is resolved from the running service on each start rather than hard-coded, so a reinstall or a reassigned port heals on the next restart.
+Fulcrum becomes a dependency only while selected. The backend's address is resolved from the running service on each start rather than hard-coded, so a reinstall or a reassigned port heals on the next restart.
 
 Selecting `None` is allowed and leaves Frigate answering Silent Payments queries alone, with nothing behind it to proxy to — a wallet connected to it will fail every ordinary address lookup. That is the shape of the complaint when a user reports the server "works but can't find my transactions".
 
@@ -178,7 +183,7 @@ Most of these come from the package taking ownership of the Bitcoin connection a
 
 1. **No SSL configuration.** Upstream's `server.sslCert` / `server.sslKey` are not exposed; StartOS terminates TLS on its own certificate instead.
 2. **The Bitcoin connection is not yours to set.** `core.server`, `core.dataDir`, `core.authType` and `core.zmqSequenceEndpoint` are rewritten on every start to point at the Bitcoin service on this server. Cookie authentication is the only mode; `USERPASS` is not exposed.
-3. **One backend at a time.** Upstream takes a single `backendElectrumServer`, so Fulcrum and Electrs are alternatives, not both.
+3. **BLAKE2b backend only.** This build offers BLAKE2b-compatible Fulcrum or no backend; stock Electrs is not supported.
 4. **A different default start height.** This package indexes from a more recent block than upstream does, to keep the first sync tolerable. The trade-off and how to change it are covered in the Instructions tab.
 5. **The AMD variant is built on ROCm nightlies.** The image pins a nightly ROCm release; it has not been tested by the packager on real AMD hardware.
 6. **Upstream is experimental.** Silent Payments support is still moving, and so is the wallet support for it.
@@ -189,8 +194,8 @@ Most of these come from the package taking ownership of the Bitcoin connection a
 ## Quick Reference for AI Consumers
 
 ```yaml
-package_id: frigate
-image: ghcr.io/remcoros/frigate-docker
+package_id: frigate-blake2b
+image: locally built BLAKE2b application over ghcr.io/remcoros/frigate-docker
 architectures:
   - x86_64
   - aarch64 # generic variant only; nvidia and amd are x86_64
@@ -206,7 +211,6 @@ startos_managed_env_vars:
 dependencies:
   - bitcoind # required; its volume is mounted read-only at /root/.bitcoin
   - fulcrum # optional, recommended
-  - electrs # optional
 interfaces:
   electrum: { type: api, port: 50001 }
 actions:
@@ -218,3 +222,47 @@ health_checks:
   - primary # displayed "Electrum Server"
   - sync-progress # displayed "Sync Progress"
 ```
+
+## Migrate from service ID `frigate` (including 1.5.3:1)
+
+Changing the ID creates a new StartOS service. Sideloading this package does not update `frigate`, transfer its volume, or preserve its network addresses. The ordinary StartOS backup of the old package excludes `db/`; restoring that backup alone will not preserve the index.
+
+The following procedure targets **StartOS 0.4.1.2**, on the **same box**, with SSH administrator access. It copies the application volume, not StartOS's package records. The 1.5.3 and 1.6.1 application sources use the same index table definitions; nevertheless, retain the old installation until the new one has opened your actual database and caught up successfully. A database indexed on another chain is not a BLAKE2b index: if the old service followed the stock Bitcoin chain past the fork, rebuild the index instead of importing it.
+
+1. Record the old service's index height, indexing settings, backend choice, and wallet connection addresses. Take a normal StartOS backup for recovery of settings. Keep the old package installed.
+2. Sideload the locally built `frigate-blake2b_generic_x86_64.s9pk` (or the matching GPU/architecture variant). Leave its **Configure Frigate** task unanswered so it does not begin indexing. If you already configured it, stop it.
+3. Stop **both** `frigate` and `frigate-blake2b` in StartOS. Wait until both show **Stopped**, not **Stopping**. Keep them stopped throughout the copy and checksum verification. Do not run backup, restore, upgrade, or configuration actions during this operation.
+4. SSH into the **StartOS box**, not the build VM. Start a root shell with `sudo -i`, then run the following. It refuses a target that already contains a database, saves the new package's initial volume, and uses a copy rather than a move. Allow enough free space for a second full index.
+
+   ```bash
+   bash <<'MIGRATE'
+   set -euo pipefail
+   source_volume=/media/startos/data/package-data/volumes/frigate/data/main
+   target_volume=/media/startos/data/package-data/volumes/frigate-blake2b/data/main
+   saved_volume="${target_volume}.before-import-$(date +%Y%m%d-%H%M%S)"
+   test -f "$source_volume/config.toml"
+   test -f "$source_volume/db/frigate.duckdb"
+   test -d "$target_volume"
+   test ! -e "$target_volume/db"
+   test ! -e "$saved_volume"
+   du -sh "$source_volume"
+   df -h "$target_volume"
+   cp -a --reflink=auto "$target_volume" "$saved_volume"
+   rsync -aHAX --numeric-ids --delete --info=progress2 "$source_volume/" "$target_volume/"
+   differences=$(rsync -aHAXnci --numeric-ids --delete "$source_volume/" "$target_volume/")
+   if [ -n "$differences" ]; then
+     printf '%s\n' "$differences"
+     echo 'Verification failed. Keep both services stopped.' >&2
+     exit 1
+   fi
+   echo "Copy verified. Initial destination saved at $saved_volume"
+   MIGRATE
+   ```
+
+   Copy the **whole** `main` volume, including `db/`, any DuckDB WAL, `config.toml`, and `store.json` when present. Do not copy only the `.duckdb` file, rename the package directory, edit StartOS's database, or copy the old package's assets. The guarded `--delete` above removes generated destination files absent from the old volume, notably a default `store.json` that would otherwise hide the old backend choice. It never deletes source files.
+5. Rebuild the **new service's container** to rerun initialization against the copied settings. From an authenticated CLI on the build VM, use `start-cli -H <box-url> package rebuild frigate-blake2b`. Wait for initialization to finish, then open **Configure Frigate**, check the backend and indexing settings against your notes, and save. Initialization infers a missing `store.json` from the old backend URL; runtime setup regenerates Bitcoin RPC/ZMQ and backend addresses and the StartOS TLS-proxy exemption. Do not copy OS data-version metadata: this is a new service, so old-ID version migrations are not automatically executed.
+6. Start the new service. Check its logs for database errors and verify it resumes from the saved index height, catches up, and passes both health checks. Only after that, point wallets at its **new** Electrum address and confirm a known wallet's history. For BLAKE2b header validation, run `python3 scripts/header-smoke-test.py HOST PORT --ssl` from this repository against the new TLS address. Leave the old service stopped.
+
+**Rollback:** stop the new service, wait for **Stopped**, start the original `frigate`, and restore wallets' original addresses. Its volume was never moved or upgraded. Do not copy the new database back over the old one. Uninstall the old service only after you are satisfied with the new one; uninstalling deletes its rollback data. If the new service reports database incompatibility, preserve both copies for diagnosis and rebuild only the new index as a fallback.
+
+These steps do not claim an end-to-end migration test on your box: the actual copied database and wallet behavior must be checked in steps 5–6.

@@ -1,2 +1,6 @@
 .git
 .gitmodules
+node_modules
+javascript
+docker-images
+*.s9pk

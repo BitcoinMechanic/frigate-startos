@@ -1,5 +1,5 @@
 export const short = {
-  en_US: 'Electrum server with Silent Payments scanning',
+  en_US: 'Knots BLAKE2b Electrum server with Silent Payments scanning',
   es_ES: 'Servidor Electrum con escaneo de Pagos Silenciosos',
   de_DE: 'Electrum-Server mit Silent-Payments-Scan',
   pl_PL: 'Serwer Electrum ze skanowaniem Silent Payments',
@@ -8,15 +8,15 @@ export const short = {
 
 export const long = {
   en_US:
-    'Frigate is an experimental Electrum server from the Sparrow Wallet team. It scans the blockchain for Silent Payments (BIP352) on behalf of wallets, using ephemeral client keys so the server never learns which payments belong to whom, and can offload the scan to a GPU. Pair it with Fulcrum or Electrs to serve ordinary address lookups alongside Silent Payments.',
+    'A Knots-aware build of Frigate for the BLAKE2b chain. It understands 164-byte v2 block headers and scans for Silent Payments (BIP352) using ephemeral client keys. Pair it with BLAKE2b-compatible Fulcrum for ordinary address lookups.',
   es_ES:
-    'Frigate es un servidor Electrum experimental del equipo de Sparrow Wallet. Escanea la cadena de bloques en busca de Pagos Silenciosos (BIP352) en nombre de las carteras, usando claves de cliente efímeras para que el servidor nunca sepa qué pagos pertenecen a quién, y puede delegar el escaneo a una GPU. Combínalo con Fulcrum o Electrs para atender también las búsquedas de direcciones habituales.',
+    'Una compilación de Frigate compatible con la cadena BLAKE2b de Bitcoin Knots y sus encabezados v2 de 164 bytes. Escanea Pagos Silenciosos (BIP352) y utiliza Fulcrum compatible con BLAKE2b para consultas ordinarias.',
   de_DE:
-    'Frigate ist ein experimenteller Electrum-Server vom Team hinter Sparrow Wallet. Er durchsucht die Blockchain im Auftrag von Wallets nach Silent Payments (BIP352) und nutzt dabei kurzlebige Client-Schlüssel, sodass der Server nie erfährt, welche Zahlung zu wem gehört; der Scan kann auf eine GPU ausgelagert werden. In Kombination mit Fulcrum oder Electrs beantwortet er zusätzlich gewöhnliche Adressabfragen.',
+    'Eine Knots-kompatible Frigate-Version für die BLAKE2b-Chain und ihre 164-Byte-v2-Header. Sie scannt Silent Payments (BIP352) und nutzt BLAKE2b-kompatibles Fulcrum für gewöhnliche Abfragen.',
   pl_PL:
-    'Frigate to eksperymentalny serwer Electrum od zespołu Sparrow Wallet. Skanuje łańcuch bloków w poszukiwaniu Silent Payments (BIP352) w imieniu portfeli, używając efemerycznych kluczy klienta, dzięki czemu serwer nigdy nie dowiaduje się, do kogo należą płatności, a samo skanowanie może przenieść na GPU. W połączeniu z Fulcrum lub Electrs obsługuje także zwykłe wyszukiwanie adresów.',
+    'Wersja Frigate zgodna z łańcuchem BLAKE2b Bitcoin Knots i jego 164-bajtowymi nagłówkami v2. Skanuje Silent Payments (BIP352) i używa zgodnego Fulcrum do zwykłych zapytań.',
   fr_FR:
-    "Frigate est un serveur Electrum expérimental de l'équipe de Sparrow Wallet. Il analyse la chaîne de blocs à la recherche de Silent Payments (BIP352) pour le compte des portefeuilles, à l'aide de clés client éphémères pour que le serveur n'apprenne jamais à qui appartient un paiement, et peut confier l'analyse à un GPU. Associé à Fulcrum ou Electrs, il répond en plus aux recherches d'adresses classiques.",
+    'Une version de Frigate compatible avec la chaîne BLAKE2b de Bitcoin Knots et ses en-têtes v2 de 164 octets. Elle analyse les Silent Payments (BIP352) et utilise un Fulcrum compatible pour les requêtes ordinaires.',
 }
 
 export const bitcoindDescription = {

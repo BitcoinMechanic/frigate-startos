@@ -16,7 +16,7 @@ const dict = {
   'Configure Frigate': 200,
   'Set or update Frigate configuration settings.': 201,
   'Electrum Server': 202,
-  'Where Frigate sends the Electrum requests it does not answer itself, address lookups included. Frigate answers Silent Payments requests on its own.\n- Fulcrum: Fulcrum on this server.\n- Electrs: Electrs on this server.\n- None: no backend; wallets get Silent Payments results only.': 203,
+  'Where Frigate sends the Electrum requests it does not answer itself, address lookups included. Frigate answers Silent Payments requests on its own.\n- Fulcrum: Fulcrum on this server.\n- None: no backend; wallets get Silent Payments results only.': 203,
   'Fulcrum (recommended)': 204,
   '(not installed)': 205,
   Electrs: 206,

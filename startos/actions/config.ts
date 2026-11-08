@@ -17,12 +17,6 @@ const inputSpec = InputSpec.of({
     let serverType: ElectrumServerType = 'none'
     const disabled: ElectrumServerType[] = []
 
-    if (installedPackages.includes('electrs')) {
-      serverType = 'electrs'
-    } else {
-      disabled.push('electrs')
-    }
-
     if (installedPackages.includes('fulcrum')) {
       serverType = 'fulcrum'
     } else {
@@ -32,7 +26,7 @@ const inputSpec = InputSpec.of({
     return {
       name: i18n('Electrum Server'),
       description: i18n(
-        'Where Frigate sends the Electrum requests it does not answer itself, address lookups included. Frigate answers Silent Payments requests on its own.\n- Fulcrum: Fulcrum on this server.\n- Electrs: Electrs on this server.\n- None: no backend; wallets get Silent Payments results only.',
+        'Where Frigate sends the Electrum requests it does not answer itself, address lookups included. Frigate answers Silent Payments requests on its own.\n- Fulcrum: Fulcrum on this server.\n- None: no backend; wallets get Silent Payments results only.',
       ),
       default: serverType,
       disabled: disabled,
@@ -41,12 +35,6 @@ const inputSpec = InputSpec.of({
           name:
             i18n('Fulcrum (recommended)') +
             (disabled.includes('fulcrum') ? ' ' + i18n('(not installed)') : ''),
-          spec: InputSpec.of({}),
-        },
-        electrs: {
-          name:
-            i18n('Electrs') +
-            (disabled.includes('electrs') ? ' ' + i18n('(not installed)') : ''),
           spec: InputSpec.of({}),
         },
         none: {

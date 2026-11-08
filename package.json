@@ -1,9 +1,8 @@
 {
-  "name": "frigate",
+  "name": "frigate-blake2b",
   "dependencies": {
     "@start9labs/start-sdk": "3.0.3",
     "bitcoin-core-startos": "github:Start9Labs/bitcoin-core-startos#next/31.x",
-    "electrs-startos": "github:Start9Labs/electrs-startos#next",
     "fulcrum-startos": "github:Start9Labs/fulcrum-startos#next"
   },
   "overrides": {

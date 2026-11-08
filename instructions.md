@@ -1,4 +1,6 @@
-# Frigate
+# Frigate (BLAKE2b)
+
+This package appears in StartOS as **Frigate (BLAKE2b)** with service ID `frigate-blake2b`. It is a separate service from the `frigate` package. To keep an existing index (including version `1.5.3:1`), follow the **Migrate from service ID `frigate`** section in the [package README](https://github.com/BitcoinMechanic/frigate-startos#readme): install the new package, stop both services, copy and verify the full application volume over SSH, rebuild the new container, and check its configuration before starting. Normal backups exclude the index. Keep the original service installed and stopped until the new one works, and update wallets to the new Electrum address.
 
 ## Documentation
 
@@ -10,7 +12,7 @@
 
 An Electrum server that scans the blockchain for Silent Payments on your wallet's behalf, without learning which payments are yours. Point a Silent Payments wallet at Frigate's Electrum address and it can find its incoming payments without downloading the chain itself.
 
-Frigate answers Silent Payments queries and nothing else. To use it as your wallet's only server, pair it with **Fulcrum** or **Electrs**, which answer ordinary address lookups; Frigate forwards those to whichever one you select.
+Frigate answers Silent Payments queries and nothing else. To use it as your wallet's only server, pair it with **Fulcrum (BLAKE2b)**, which answer ordinary address lookups; Frigate forwards those to the selected backend.
 
 ## Server protections
 
@@ -18,8 +20,8 @@ Frigate 1.6 adds limits that protect a public Electrum server from too many conn
 
 ## Getting set up
 
-1. **Install Bitcoin** and let it finish syncing. Frigate needs a full, unpruned node, and you'll be asked to run Bitcoin's **Auto-Configure** to turn on the settings Frigate depends on.
-2. **Install Fulcrum** (recommended) or **Electrs**, and start it. You can skip this, but wallets pointed at Frigate will then only be able to do Silent Payments lookups.
+1. **Install Bitcoin Knots (BLAKE2b)** and let it finish syncing. Frigate needs a full, unpruned node, and you'll be asked to run Bitcoin's **Auto-Configure** to turn on the settings Frigate depends on.
+2. **Install Fulcrum (BLAKE2b)** (recommended), and start it. You can skip this, but wallets pointed at Frigate will then only be able to do Silent Payments lookups.
 3. **Run Configure Frigate.** Select your Electrum backend, and adjust the indexing settings if you need to. Frigate starts once you save.
 4. **Wait for the first index.** This takes hours, sometimes days, depending on your start height and hardware. Frigate's Electrum address does not accept connections until it is done — watch **Sync Progress** for the block it has reached.
 5. **Connect your wallet** to Frigate's Electrum address.
@@ -48,4 +50,4 @@ If scanning stalls on a GPU, lower **Batch Size** in **Configure Frigate**. Olde
 ## Limitations
 
 - Frigate is experimental, and so is wallet support for Silent Payments. Treat it as something to try rather than something to depend on.
-- Frigate does not answer ordinary address queries on its own. Without Fulcrum or Electrs selected, a general-purpose wallet cannot use it as its only server.
+- Frigate does not answer ordinary address queries on its own. Without Fulcrum (BLAKE2b) selected, a general-purpose wallet cannot use it as its only server.

@@ -1,0 +1,48 @@
+--- a/src/main/java/com/sparrowwallet/frigate/bitcoind/BitcoindClient.java
++++ b/src/main/java/com/sparrowwallet/frigate/bitcoind/BitcoindClient.java
+@@ -136,8 +136,7 @@
+             log.debug("Using getblock verbosity=3 (Bitcoin Core {})", networkInfo.version());
+         }
+ 
+-        VerboseBlockHeader blockHeader = getBitcoindService().getBlockHeader(blockchainInfo.bestblockhash());
+-        tip = blockHeader.getBlockHeader();
++        tip = getElectrumBlockHeader(blockchainInfo);
+         timer.schedule(new PollTask(), 5000, 5000);
+ 
+         if(blockchainInfo.initialblockdownload() && networkInfo.networkactive()) {
+@@ -160,8 +159,7 @@
+             }
+ 
+             blockchainInfo = getBitcoindService().getBlockchainInfo();
+-            blockHeader = getBitcoindService().getBlockHeader(blockchainInfo.bestblockhash());
+-            tip = blockHeader.getBlockHeader();
++            tip = getElectrumBlockHeader(blockchainInfo);
+         }
+ 
+         lastBlock = blockchainInfo.bestblockhash();
+@@ -222,6 +220,15 @@
+                 log.warn("Polling bitcoind every {}s, for more responsive updates {}", pollSeconds, fix);
+             }
+         }
++    }
++
++    private ElectrumBlockHeader getElectrumBlockHeader(BlockchainInfo blockchainInfo) {
++        String headerHex = getBitcoindService().getBlockHeader(blockchainInfo.bestblockhash(), false);
++        BlockHeader blockHeader = new BlockHeader(HexFormat.of().parseHex(headerHex));
++        if(!blockHeader.getHash().toString().equals(blockchainInfo.bestblockhash())) {
++            throw new IllegalStateException("Bitcoin Core returned a header whose calculated hash does not match " + blockchainInfo.bestblockhash());
++        }
++        return new ElectrumBlockHeader(blockchainInfo.blocks(), headerHex);
+     }
+ 
+     private synchronized void updateBlocksIndex() {
+@@ -761,8 +768,7 @@
+                 String currentBlock = lastBlock;
+ 
+                 if(currentBlock == null || !currentBlock.equals(blockchainInfo.bestblockhash())) {
+-                    VerboseBlockHeader blockHeader = getBitcoindService().getBlockHeader(blockchainInfo.bestblockhash());
+-                    tip = blockHeader.getBlockHeader();
++                    tip = getElectrumBlockHeader(blockchainInfo);
+                     log.debug("New block height " + tip.height());
+                     publishTip();
+                     updateBlocksIndex();
